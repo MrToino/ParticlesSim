@@ -1,27 +1,26 @@
 import pygame
 import random
 import numpy as np
+from numpy import linalg
 
-
-WIDTH, HEIGHT = 500, 300
-WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Particles Simulation")
 
 
 class Configurations:
-    width = 700
-    height = 500
+    width = 400
+    height = 300
     gray1 = (50, 50, 50)
     red = (255, 0, 0)
     green = (0, 255, 0)
     fps = 60
-    radius = 5
-    velocity = 1
+    radius = 50
+    velocity = 2
     eff_width = width - radius
     eff_height = height - radius
 
 
 class Agent:
+    mass = 1
+
     def __init__(self, id: int, pos: np.array, vel: np.array, color: tuple, radius: int) -> None:
         self.id = id
         self.pos = pos
@@ -29,8 +28,18 @@ class Agent:
         self.color = color
         self.radius = radius
 
-    def collision(self, agent):
-        pass
+    def collision(self, agent): 
+        v1 = self.vel
+        v2 = agent.vel
+        m1 = self.mass
+        m2 = agent.mass
+        x1x2 = self.pos - agent.pos
+        
+        v1 = v1 - 2*m2/(m1+m2)*np.dot(v1-v2, x1x2) / np.dot(x1x2, x1x2) * (x1x2)
+        v2 = v2 - 2*m1/(m1+m2)*np.dot(v2-v1, -x1x2) / np.dot(x1x2, x1x2) * (-x1x2)
+        
+        self.vel = v1
+        agent.vel = v2 
 
 
 class Simulation:
@@ -71,7 +80,7 @@ class Simulation:
             color = random.choice([self.configs.red, self.configs.green])
 
             agents.append(Agent(i, pos=np.array((posX, posY)), vel=vel, color=color, radius=r))
-            pygame.draw.circle(WIN, color, (posX, posY), r)
+            pygame.draw.circle(self.screen, color, (posX, posY), r)
             positions.append((posX, posY))
 
         return agents
@@ -95,9 +104,13 @@ class Simulation:
 
         for agent in self.agents:
             new_pos = self.wall_collision(agent)
+            for agent2 in self.agents:
+                if agent2.id != agent.id:
+                    if linalg.norm(agent.pos + agent.vel - agent2.pos - agent2.vel) <= agent.radius + agent2.radius:
+                        agent.collision(agent2)
 
             agent.pos = new_pos
-            pygame.draw.circle(WIN, agent.color, agent.pos, self.configs.radius)
+            pygame.draw.circle(self.screen, agent.color, agent.pos, self.configs.radius)
 
     def wall_collision(self, agent):
         w = self.configs.eff_width
@@ -124,7 +137,7 @@ class Simulation:
 
 
 def run(): 
-    n_agents = 100
+    n_agents = 2
     sim = Simulation(n_agents=n_agents)
     sim.run()
 
